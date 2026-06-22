@@ -24,8 +24,7 @@ team_members:
 # ============================================================================
 github_repo: "https://github.com/Prithalsing/candidate_selection"
 
-sandbox_link: "TODO"                # PENDING: Streamlit Cloud / HuggingFace Space deployment
-                                    # (app.py upload-and-rank demo to be deployed next)
+sandbox_link: "https://candidateselection-apt69vvwqg5vda5vbxez4b.streamlit.app/"
 
 reproduce_command: "python rank.py --candidates ./candidates.jsonl --out ./submission.csv"
 # Single command, end-to-end, CPU only, no network. Measured runtime: ~88 seconds
