@@ -7,14 +7,17 @@
 team_name: "Prithalsing"            # TODO: confirm exact registered team name
 
 primary_contact:
-  name: "Prithalsing"
-  email: "prithalsing@trackmind.com"
-  phone: "+91-XXXXXXXXXX"           # TODO: add contact number for top-50 / top-10 outreach
+  name: "Prithalsing Vilas More"
+  email: "prithalsingmega@gmail.com"
+  phone: "+91-9420602163"
 
 team_members:
-  - name: "Prithalsing"
-    email: "prithalsing@trackmind.com"
-    role: "Solo participant — ML / ranking"
+  - name: "Prithalsing Vilas More"
+    email: "prithalsingmega@gmail.com"
+    role: "ML / ranking, code"
+  - name: "TODO — second member name"      # TODO: fill teammate details
+    email: "TODO — second member email"
+    role: "TODO"
 
 # ============================================================================
 # Code and reproducibility
@@ -27,6 +30,7 @@ sandbox_link: "TODO"                # PENDING: Streamlit Cloud / HuggingFace Spa
 reproduce_command: "python rank.py --candidates ./candidates.jsonl --out ./submission.csv"
 # Single command, end-to-end, CPU only, no network. Measured runtime: ~88 seconds
 # for the full 100,000-candidate pool (well within the 5-minute limit).
+# Accepts either a JSON array (.json) or JSON-lines (.jsonl) input file.
 
 # ============================================================================
 # Compute environment
@@ -46,14 +50,18 @@ compute:
 # AI tools declaration
 # ============================================================================
 ai_tools_used:
-  - "Claude"
+  - "Claude"        # brainstorming + code writing
+  - "Gemini"        # brainstorming
+  - "Antigravity"   # code writing
 
 ai_usage_summary: |
-  Used Claude (Anthropic) as a pair-programming partner for data exploration,
-  architecture discussion, code review, and iterative notebook construction.
-  All scoring logic, weights, and thresholds were reviewed and validated against
-  the data. No candidate data was sent to any external LLM API during ranking —
-  rank.py runs fully offline on CPU.
+  AI tools were used as follows:
+  - Claude (Anthropic): brainstorming the approach and writing code.
+  - Gemini (Google): brainstorming and ideation.
+  - Antigravity: code writing / editing.
+  All scoring logic, weights, and thresholds were reviewed and validated by the
+  team against the data. No candidate data was sent to any external LLM API
+  during ranking — rank.py runs fully offline on CPU.
 
 # ============================================================================
 # Approach summary
