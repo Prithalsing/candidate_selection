@@ -327,6 +327,25 @@ def rank_candidates(cands, top_n=100):
     return top
 
 
+def load_candidates(path):
+    """Load candidates from either a JSON array (.json) or JSON-lines (.jsonl).
+    Auto-detects by the first non-whitespace character, so both the original
+    candidates.jsonl and an exported candidates.json array work unchanged.
+    """
+    with open(path, encoding='utf-8') as f:
+        head = f.read(64).lstrip()
+        f.seek(0)
+        if head.startswith('['):
+            data = json.load(f)
+            return data if isinstance(data, list) else [data]
+        cands = []
+        for line in f:
+            line = line.strip().rstrip(',')
+            if line and line not in ('[', ']'):
+                cands.append(json.loads(line))
+        return cands
+
+
 def main():
     ap = argparse.ArgumentParser(description='Redrob hybrid candidate ranker')
     ap.add_argument('--candidates', required=True, help='path to candidates.jsonl')
@@ -334,12 +353,7 @@ def main():
     ap.add_argument('--top', type=int, default=100, help='number of candidates to output')
     args = ap.parse_args()
 
-    cands = []
-    with open(args.candidates, encoding='utf-8') as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                cands.append(json.loads(line))
+    cands = load_candidates(args.candidates)
     print(f'Loaded {len(cands):,} candidates from {args.candidates}')
 
     ranked = rank_candidates(cands, top_n=args.top)
