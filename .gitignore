@@ -1,8 +1,17 @@
+# raw / generated candidate data (large; GitHub blocks >100MB) — never commit
 candidates.jsonl
+candidates.json
+candidates_*.json
+candidates_*.jsonl
+candidates.xlsx
+candidates_*.xlsx
+
+# generated submission at repo root (canonical one lives in outputs/)
+submission.csv
+
 outputs/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
 *.egg-info/
 .env
-
