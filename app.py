@@ -1,56 +1,131 @@
+import io
 import json
-import streamlit as st
+
 import pandas as pd
+import streamlit as st
+
+import rank  # the hybrid ranker (same logic as the CLI / notebooks)
 
 st.set_page_config(page_title="Candidate Ranker", page_icon="🎯", layout="wide")
 
 st.title("🎯 Candidate Ranker")
-st.caption("Redrob Hackathon — Senior AI Engineer JD")
+st.caption("Redrob Hackathon — Senior AI Engineer JD  •  hybrid: rules + BM25 + assessment")
 
 st.divider()
 
-uploaded = st.file_uploader(
-    "Upload candidate file (.json or .jsonl)",
-    type=["json", "jsonl"],
-)
+
+# ── helpers (reuse rank.py logic, no duplication) ──────────────────────────────
+def is_stuffer(c):
+    """Tier-0 title that has stuffed 4+ JD skills."""
+    title = (c.get("profile", {}) or {}).get("current_title", "").lower().strip()
+    names = {(s.get("name") or "").lower() for s in (c.get("skills", []) or [])}
+    return title in rank.TIER0 and len(names & rank.ALL_JD) >= 4
+
+
+def parse_upload(file):
+    content = file.read().decode("utf-8")
+    if file.name.endswith(".jsonl"):
+        return [json.loads(l) for l in content.splitlines() if l.strip()]
+    data = json.loads(content)
+    return data if isinstance(data, list) else [data]
+
+
+# ── upload ─────────────────────────────────────────────────────────────────────
+uploaded = st.file_uploader("Upload candidate file (.json or .jsonl)", type=["json", "jsonl"])
 
 candidates = []
-
 if uploaded:
     try:
-        content = uploaded.read().decode("utf-8")
-        if uploaded.name.endswith(".jsonl"):
-            candidates = [json.loads(l) for l in content.splitlines() if l.strip()]
-        else:
-            data = json.loads(content)
-            candidates = data if isinstance(data, list) else [data]
-
-        if len(candidates) > 100:
-            st.warning(f"Showing first 100 of {len(candidates)} candidates.")
-            candidates = candidates[:100]
-
-        st.success(f"Loaded **{len(candidates)}** candidates from `{uploaded.name}`")
-
+        candidates = parse_upload(uploaded)
+        st.success(f"Loaded **{len(candidates):,}** candidates from `{uploaded.name}`")
     except Exception as e:
         st.error(f"Could not parse file: {e}")
 
-if candidates:
+if not candidates:
+    st.info("Upload a `.json` or `.jsonl` file to rank candidates. "
+            "Try `sample_candidates.json` from the repo.")
+    st.stop()
+
+
+# ── controls ───────────────────────────────────────────────────────────────────
+col_a, col_b = st.columns([1, 3])
+with col_a:
+    top_n = st.number_input("Top N to return", min_value=1, max_value=100,
+                            value=min(100, len(candidates)))
+run = st.button("🚀 Rank candidates", type="primary", use_container_width=True)
+
+if not run:
     st.divider()
-    st.subheader("Candidates Preview")
+    st.subheader("Preview")
+    prev = [{
+        "ID": c.get("candidate_id", "—"),
+        "Title": (c.get("profile", {}) or {}).get("current_title", "—"),
+        "YoE": (c.get("profile", {}) or {}).get("years_of_experience", "—"),
+        "Country": (c.get("profile", {}) or {}).get("country", "—"),
+    } for c in candidates[:100]]
+    st.dataframe(pd.DataFrame(prev), use_container_width=True, hide_index=True)
+    st.stop()
 
-    rows = []
-    for c in candidates:
-        p = c.get("profile", {})
-        rows.append({
-            "ID":       c.get("candidate_id", "—"),
-            "Name":     p.get("anonymized_name", "—"),
-            "Title":    p.get("current_title", "—"),
-            "YoE":      p.get("years_of_experience", "—"),
-            "Location": p.get("location", "—"),
-            "Country":  p.get("country", "—"),
-        })
 
-    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+# ── run the hybrid pipeline ─────────────────────────────────────────────────────
+with st.spinner(f"Running hybrid ranker on {len(candidates):,} candidates…"):
+    ranked = rank.rank_candidates(candidates, top_n=int(top_n))
+    n_honeypot = sum(1 for c in candidates if rank.is_honeypot(c))
+    n_stuffer = sum(1 for c in candidates if is_stuffer(c))
 
-else:
-    st.info("Upload a .json or .jsonl file to preview candidates.")
+by_id = {c.get("candidate_id"): c for c in candidates}
+
+st.divider()
+
+# ── safety metrics ──────────────────────────────────────────────────────────────
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Candidates scored", f"{len(candidates):,}")
+m2.metric("Honeypots excluded", n_honeypot, help="Impossible profiles forced to score 0")
+m3.metric("Keyword stuffers", n_stuffer, help="Tier-0 titles with 4+ stuffed AI skills (gated out)")
+hp_in_top = sum(1 for r in ranked if rank.is_honeypot(by_id.get(r["candidate_id"], {})))
+m4.metric("Honeypots in top N", hp_in_top, help="Must be 0")
+
+if hp_in_top == 0 and n_stuffer >= 0:
+    st.success("✅ Top N is clean — no honeypots; keyword stuffers gated out by the title multiplier.")
+
+# ── ranked table (enriched for display) ─────────────────────────────────────────
+st.subheader(f"Top {len(ranked)} ranked candidates")
+disp = []
+for r in ranked:
+    c = by_id.get(r["candidate_id"], {})
+    p = c.get("profile", {}) or {}
+    disp.append({
+        "Rank": r["rank"],
+        "Candidate ID": r["candidate_id"],
+        "Title": p.get("current_title", "—"),
+        "YoE": p.get("years_of_experience", "—"),
+        "Country": p.get("country", "—"),
+        "Score": r["score"],
+        "Why": r["reasoning"],
+    })
+disp_df = pd.DataFrame(disp)
+st.dataframe(disp_df, use_container_width=True, hide_index=True,
+            column_config={"Score": st.column_config.NumberColumn(format="%.4f")})
+
+# ── download in official 4-column submission format ─────────────────────────────
+sub_df = pd.DataFrame([{
+    "candidate_id": r["candidate_id"],
+    "rank": r["rank"],
+    "score": f"{r['score']:.4f}",
+    "reasoning": r["reasoning"],
+} for r in ranked])
+buf = io.StringIO()
+sub_df.to_csv(buf, index=False)
+st.download_button("⬇️ Download submission.csv (official format)",
+                   data=buf.getvalue(), file_name="submission.csv",
+                   mime="text/csv", use_container_width=True)
+
+with st.expander("How the score is computed"):
+    st.markdown(
+        "**`final = title_gate × quality × engagement`** (0 if honeypot)\n\n"
+        "- **Stage 0 — honeypot exclusion:** date / YoE / skill-duration / expert-assessment impossibilities → score 0\n"
+        "- **Stage 1 — title gate (×1.0…0.05):** keyword-stuffer Tier-0 profiles can't reach the top\n"
+        "- **Stage 2 — quality blend:** skill 0.25, BM25 0.20, career-text 0.18, assessment 0.17, "
+        "career-history 0.10, YoE 0.06, location 0.04\n"
+        "- **Stage 3 — engagement (×0.50…1.00):** response rate, recency, notice period, open-to-work"
+    )
