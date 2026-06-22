@@ -1,0 +1,4 @@
+[server]
+# Raise the file-uploader cap (MB). Browser upload is still memory-heavy, so for
+# the full 487 MB file prefer the app's "Local file path" mode or rank.py CLI.
+maxUploadSize = 500

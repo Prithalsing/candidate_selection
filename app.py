@@ -1,5 +1,6 @@
 import io
 import json
+import os
 
 import pandas as pd
 import streamlit as st
@@ -30,21 +31,55 @@ def parse_upload(file):
     return data if isinstance(data, list) else [data]
 
 
-# ── upload ─────────────────────────────────────────────────────────────────────
-uploaded = st.file_uploader("Upload candidate file (.json or .jsonl)", type=["json", "jsonl"])
+# ── input: upload (small files) OR local path (large files) ────────────────────
+mode = st.radio(
+    "Input source",
+    ["Upload file (≤200 MB)", "Local file path (any size)"],
+    horizontal=True,
+    help="Browser upload is capped and memory-heavy. For the full 487 MB file, "
+         "use a local path — it streams from disk and skips the browser entirely.",
+)
 
 candidates = []
-if uploaded:
-    try:
-        candidates = parse_upload(uploaded)
-        st.success(f"Loaded **{len(candidates):,}** candidates from `{uploaded.name}`")
-    except Exception as e:
-        st.error(f"Could not parse file: {e}")
+source_label = ""
+
+if mode.startswith("Upload"):
+    uploaded = st.file_uploader("Upload candidate file (.json or .jsonl)", type=["json", "jsonl"])
+    if uploaded:
+        try:
+            candidates = parse_upload(uploaded)
+            source_label = uploaded.name
+        except Exception as e:
+            st.error(f"Could not parse file: {e}")
+else:
+    path = st.text_input("Path to candidates file on this machine",
+                         value="./candidates.json",
+                         help="e.g. ./candidates.json or ./candidates.jsonl (array or JSON-lines)")
+    if path:
+        if not os.path.exists(path):
+            st.warning(f"File not found: `{path}`")
+        else:
+            size_mb = os.path.getsize(path) / 1e6
+            if size_mb > 250:
+                st.info(f"`{path}` is {size_mb:.0f} MB — large files need plenty of RAM "
+                        f"(~4 GB for the full 100K). This works locally; not on low-RAM hosts.")
+            if st.button("📂 Load from disk", use_container_width=True):
+                with st.spinner(f"Loading {path} ({size_mb:.0f} MB)…"):
+                    candidates = rank.load_candidates(path)   # auto-detects array vs jsonl
+                    source_label = path
+                st.session_state["loaded"] = candidates
+                st.session_state["source"] = path
+    # keep loaded data across reruns
+    if not candidates and st.session_state.get("loaded"):
+        candidates = st.session_state["loaded"]
+        source_label = st.session_state.get("source", "")
 
 if not candidates:
-    st.info("Upload a `.json` or `.jsonl` file to rank candidates. "
-            "Try `sample_candidates.json` from the repo.")
+    st.info("Upload a `.json`/`.jsonl` file, or point to one on disk. "
+            "Try `sample_candidates.json` (small) or `candidates.json` (full, via path mode).")
     st.stop()
+
+st.success(f"Loaded **{len(candidates):,}** candidates from `{source_label}`")
 
 
 # ── controls ───────────────────────────────────────────────────────────────────
@@ -85,7 +120,7 @@ m3.metric("Keyword stuffers", n_stuffer, help="Tier-0 titles with 4+ stuffed AI 
 hp_in_top = sum(1 for r in ranked if rank.is_honeypot(by_id.get(r["candidate_id"], {})))
 m4.metric("Honeypots in top N", hp_in_top, help="Must be 0")
 
-if hp_in_top == 0 and n_stuffer >= 0:
+if hp_in_top == 0:
     st.success("✅ Top N is clean — no honeypots; keyword stuffers gated out by the title multiplier.")
 
 # ── ranked table (enriched for display) ─────────────────────────────────────────
