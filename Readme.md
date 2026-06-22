@@ -34,8 +34,10 @@ candidate-selection/
 │   ├── honeypot_ids.csv             53 verified honeypots
 │   ├── lexical_scores.parquet       bm25 + tfidf per candidate
 │   └── scored_*_full.parquet        full scored tables (audit)
+├── rank.py                 # single-command reproduction (notebooks 02-05 in one pass)
 ├── app.py                  # simple Streamlit upload/preview frontend
 ├── sample_candidates.json  # small sample for the app uploader
+├── submission_metadata.yaml# filled submission metadata
 ├── candidates.jsonl        # full 100K pool (gitignored)
 ├── validate_submission.py  # official challenge validator
 └── requirements.txt
@@ -46,12 +48,16 @@ candidate-selection/
 ```bash
 pip install -r requirements.txt
 
-# run notebooks in order (01 -> 05); 05 writes outputs/submission_hybrid.csv
-jupyter notebook
+# ONE command reproduces the submission end-to-end (CPU, no network, ~88s for 100K):
+python rank.py --candidates ./candidates.jsonl --out ./submission.csv
 
-# validate the final submission with the official checker
-python validate_submission.py outputs/submission_hybrid.csv
+# validate it with the official checker
+python validate_submission.py ./submission.csv
 ```
+
+The notebooks (`01` -> `05`) document how the ranker was built, technique by
+technique. `rank.py` is the consolidated final logic and is the canonical
+reproduction; it selects the same top-100 as `05_hybrid.ipynb`.
 
 ## Key design decisions
 
@@ -64,6 +70,11 @@ python validate_submission.py outputs/submission_hybrid.csv
   the differentiator that breaks score ties in the top 100.
 - BM25 is length-normalized (robust to stuffers); TF-IDF cosine is not — so BM25 is
   the lexical input to the hybrid, never the decider.
+
+## Result
+
+Final top 100: **0 honeypots, 0 keyword stuffers, 0 Tier-0 titles**, 100 unique
+non-increasing scores. Passes `validate_submission.py`. Runtime ~88s for 100K on CPU.
 
 ## Notebooks (in order)
 

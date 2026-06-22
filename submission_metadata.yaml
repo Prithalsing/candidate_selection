@@ -1,0 +1,83 @@
+# Redrob Hackathon — Submission Metadata
+# Fields should match what is submitted via the portal at upload time.
+
+# ============================================================================
+# Team identity
+# ============================================================================
+team_name: "Prithalsing"            # TODO: confirm exact registered team name
+
+primary_contact:
+  name: "Prithalsing"
+  email: "prithalsing@trackmind.com"
+  phone: "+91-XXXXXXXXXX"           # TODO: add contact number for top-50 / top-10 outreach
+
+team_members:
+  - name: "Prithalsing"
+    email: "prithalsing@trackmind.com"
+    role: "Solo participant — ML / ranking"
+
+# ============================================================================
+# Code and reproducibility
+# ============================================================================
+github_repo: "https://github.com/Prithalsing/candidate_selection"
+
+sandbox_link: "TODO"                # PENDING: Streamlit Cloud / HuggingFace Space deployment
+                                    # (app.py upload-and-rank demo to be deployed next)
+
+reproduce_command: "python rank.py --candidates ./candidates.jsonl --out ./submission.csv"
+# Single command, end-to-end, CPU only, no network. Measured runtime: ~88 seconds
+# for the full 100,000-candidate pool (well within the 5-minute limit).
+
+# ============================================================================
+# Compute environment
+# ============================================================================
+compute:
+  platform: "Local Windows PC (AMD64)"
+  cpu_cores: 12
+  ram_gb: 8
+  python_version: "3.12.10"
+  os: "Windows 11 (10.0.26200)"
+  uses_gpu_for_inference: false
+  has_network_during_ranking: false
+  pre_computation_required: false
+  pre_computation_time_minutes: 0
+
+# ============================================================================
+# AI tools declaration
+# ============================================================================
+ai_tools_used:
+  - "Claude"
+
+ai_usage_summary: |
+  Used Claude (Anthropic) as a pair-programming partner for data exploration,
+  architecture discussion, code review, and iterative notebook construction.
+  All scoring logic, weights, and thresholds were reviewed and validated against
+  the data. No candidate data was sent to any external LLM API during ranking —
+  rank.py runs fully offline on CPU.
+
+# ============================================================================
+# Approach summary
+# ============================================================================
+methodology_summary: |
+  Gate-then-score hybrid combining three paradigms: structural rules, lexical
+  retrieval (BM25), and behavioral proof. Pipeline: (0) hard-exclude honeypots —
+  53 verified impossibilities (date/YoE/skill-duration/expert-assessment
+  contradictions); (1) a multiplicative TITLE GATE (1.0..0.05) so keyword-stuffer
+  Tier-0 profiles cannot reach the top 100 regardless of stuffed skills; (2) a
+  QUALITY blend (skill depth 0.25, BM25 lexical 0.20, career-text 0.18,
+  skill-assessment 0.17, career history 0.10, YoE 0.06, location 0.04); (3) an
+  engagement multiplier (0.50..1.00) applied last. skill_assessment_scores
+  separate proven experts from claimed ones and break ties. BM25 (length-
+  normalized, hence stuffer-robust) supplies JD-specific wording our keyword
+  lists miss. Final top 100 contains 0 honeypots, 0 stuffers, 0 Tier-0 titles,
+  with 100 unique, non-increasing scores. Runtime ~88s for 100K candidates on CPU.
+
+# ============================================================================
+# Declarations
+# ============================================================================
+declarations:
+  read_submission_spec: true
+  code_is_original_work: true
+  no_collusion: true
+  honeypot_check_done: true         # Explicit forensic honeypot verification — see 03_honeypot_forensics.ipynb
+  reproduction_tested: true         # rank.py tested end-to-end; output passes validate_submission.py
