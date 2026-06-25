@@ -202,8 +202,8 @@ with tab3:
         elapsed = (datetime.now() - start).total_seconds()
         display_results(ranked, "Hybrid (TF-IDF + BM25)", f"Time: {elapsed:.1f}s | Retrieved: {retrieval_k:,} each")
 
-# ── TAB 4: Hybrid RAG Sentence Transformers ────────────────────────────────────
-if HAS_SENTENCE_TRANSFORMERS:
+# ── TAB 4: Hybrid RAG Sentence Transformers (only if available) ────────────────
+if HAS_SENTENCE_TRANSFORMERS and tab4 is not None:
     with tab4:
         st.info("Using pre-trained Sentence Transformers (all-MiniLM-L6-v2) for best semantic matching. First run will download model (~22MB).")
         if st.button("🧠 Run Hybrid RAG (Sentence Transformers)", width='stretch', key="btn_hybrid_st"):
@@ -214,7 +214,7 @@ if HAS_SENTENCE_TRANSFORMERS:
                 )
             elapsed = (datetime.now() - start).total_seconds()
             display_results(ranked, "Hybrid (Sentence Transformers + BM25)", f"Time: {elapsed:.1f}s | Retrieved: {retrieval_k:,} each")
-else:
+elif not HAS_SENTENCE_TRANSFORMERS and tab4 is not None:
     with tab4:
         st.warning("""
         ⚠️ **Sentence Transformers not available on Streamlit Cloud**
