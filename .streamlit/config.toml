@@ -8,7 +8,7 @@ font = "sans serif"
 [client]
 showErrorDetails = true
 toolbarMode = "viewer"
-maxUploadSize = 200
+maxUploadSize = 500
 
 [logger]
 level = "info"
@@ -17,5 +17,5 @@ level = "info"
 gatherUsageStats = false
 
 [server]
-maxUploadSize = 200
+maxUploadSize = 500
 enableXsrfProtection = true
