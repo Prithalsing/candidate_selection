@@ -1,4 +1,21 @@
+[theme]
+primaryColor = "#0078D4"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"
+font = "sans serif"
+
+[client]
+showErrorDetails = true
+toolbarMode = "viewer"
+maxUploadSize = 200
+
+[logger]
+level = "info"
+
+[browser]
+gatherUsageStats = false
+
 [server]
-# Raise the file-uploader cap (MB). Browser upload is still memory-heavy, so for
-# the full 487 MB file prefer the app's "Local file path" mode or rank.py CLI.
-maxUploadSize = 500
+maxUploadSize = 200
+enableXsrfProtection = true
