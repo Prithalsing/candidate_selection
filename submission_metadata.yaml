@@ -4,7 +4,7 @@
 # ============================================================================
 # Team identity
 # ============================================================================
-team_name: "Prithalsing"            # TODO: confirm exact registered team name
+team_name: "TEAMP2R"
 
 primary_contact:
   name: "Prithalsing Vilas More"
@@ -14,10 +14,7 @@ primary_contact:
 team_members:
   - name: "Prithalsing Vilas More"
     email: "prithalsingmega@gmail.com"
-    role: "ML / ranking, code"
-  - name: "TODO — second member name"      # TODO: fill teammate details
-    email: "TODO — second member email"
-    role: "TODO"
+    role: "ML / ranking, code, full pipeline development"
 
 # ============================================================================
 # Code and reproducibility
