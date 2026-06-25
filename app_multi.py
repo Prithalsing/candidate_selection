@@ -1,9 +1,9 @@
 """
-Multi-tab Streamlit app for testing all 4 ranking approaches:
+Multi-tab Streamlit app for testing ranking approaches:
 - Tab 1: Standard (score all 100K)
 - Tab 2: RAG (BM25 retrieve + score)
 - Tab 3: Hybrid RAG TF-IDF (semantic + lexical)
-- Tab 4: Hybrid RAG Sentence Transformers (pre-trained + lexical)
+- Tab 4: Hybrid RAG Sentence Transformers (pre-trained + lexical) [Optional - requires sentence-transformers]
 
 Each tab shows the same interface but uses a different ranking algorithm.
 Users can upload/select candidates file and see results for all methods.
@@ -16,11 +16,17 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime
 
-# Import all ranking modules
+# Import core ranking modules (required)
 import rank as rank_standard
 import rank_rag
 import rank_hybrid_rag
-import rank_sentence_transformers_rag
+
+# Try to import Sentence Transformers (optional for cloud deployment)
+try:
+    import rank_sentence_transformers_rag
+    HAS_SENTENCE_TRANSFORMERS = True
+except ImportError:
+    HAS_SENTENCE_TRANSFORMERS = False
 
 st.set_page_config(
     page_title="Candidate Ranker - All Methods",
@@ -29,7 +35,8 @@ st.set_page_config(
 )
 
 st.title("🎯 Candidate Ranker - Compare All Methods")
-st.caption("Redrob Hackathon — Test Standard, RAG, Hybrid TF-IDF, and Hybrid Sentence Transformers")
+st.caption("Redrob Hackathon — Test Standard, RAG, Hybrid TF-IDF" +
+           (" + Hybrid Sentence Transformers" if HAS_SENTENCE_TRANSFORMERS else ""))
 
 st.divider()
 
@@ -92,12 +99,17 @@ with col_b:
     retrieval_k = st.number_input("Retrieval K (RAG/Hybrid)", min_value=1000, max_value=10000, value=3000, step=500)
 
 # ── Tabs for each method ───────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4 = st.tabs([
+tab_list = [
     "📊 Standard (All 100K)",
     "⚡ RAG (BM25)",
     "🔀 Hybrid (TF-IDF)",
-    "🧠 Hybrid (Sentence Transformers)"
-])
+]
+if HAS_SENTENCE_TRANSFORMERS:
+    tab_list.append("🧠 Hybrid (Sentence Transformers)")
+
+tabs = st.tabs(tab_list)
+tab1, tab2, tab3 = tabs[0], tabs[1], tabs[2]
+tab4 = tabs[3] if HAS_SENTENCE_TRANSFORMERS else None
 
 # Helper function to detect keyword stuffer (from app.py)
 def is_stuffer(c):
@@ -191,16 +203,31 @@ with tab3:
         display_results(ranked, "Hybrid (TF-IDF + BM25)", f"Time: {elapsed:.1f}s | Retrieved: {retrieval_k:,} each")
 
 # ── TAB 4: Hybrid RAG Sentence Transformers ────────────────────────────────────
-with tab4:
-    st.info("Using pre-trained Sentence Transformers (all-MiniLM-L6-v2) for best semantic matching. First run will download model (~22MB).")
-    if st.button("🧠 Run Hybrid RAG (Sentence Transformers)", width='stretch', key="btn_hybrid_st"):
-        start = datetime.now()
-        with st.spinner(f"Hybrid: Semantic (Transformers) + Lexical (BM25)..."):
-            ranked = rank_sentence_transformers_rag.rank_candidates_sentence_transformers_rag(
-                candidates, retrieval_top_k=int(retrieval_k), top_n=int(top_n)
-            )
-        elapsed = (datetime.now() - start).total_seconds()
-        display_results(ranked, "Hybrid (Sentence Transformers + BM25)", f"Time: {elapsed:.1f}s | Retrieved: {retrieval_k:,} each")
+if HAS_SENTENCE_TRANSFORMERS:
+    with tab4:
+        st.info("Using pre-trained Sentence Transformers (all-MiniLM-L6-v2) for best semantic matching. First run will download model (~22MB).")
+        if st.button("🧠 Run Hybrid RAG (Sentence Transformers)", width='stretch', key="btn_hybrid_st"):
+            start = datetime.now()
+            with st.spinner(f"Hybrid: Semantic (Transformers) + Lexical (BM25)..."):
+                ranked = rank_sentence_transformers_rag.rank_candidates_sentence_transformers_rag(
+                    candidates, retrieval_top_k=int(retrieval_k), top_n=int(top_n)
+                )
+            elapsed = (datetime.now() - start).total_seconds()
+            display_results(ranked, "Hybrid (Sentence Transformers + BM25)", f"Time: {elapsed:.1f}s | Retrieved: {retrieval_k:,} each")
+else:
+    with tab4:
+        st.warning("""
+        ⚠️ **Sentence Transformers not available on Streamlit Cloud**
+
+        This tab requires the `sentence-transformers` library, which has dependency conflicts on cloud platforms.
+
+        **To use this mode:**
+        - Run locally: `streamlit run app_multi.py` with `pip install sentence-transformers`
+        - The first 3 tabs (Standard, RAG, Hybrid TF-IDF) work fine on the cloud ✅
+
+        **For full 4-method comparison:**
+        Clone the repo and run locally with all dependencies installed.
+        """)
 
 st.divider()
 
@@ -211,7 +238,7 @@ with st.expander("Comparison: Which method to use?"):
         "Time": ["~73s", "~44s", "~150s", "~80s"],
         "Retrieval": ["None (all)", "Lexical only", "Semantic + Lexical", "Semantic + Lexical"],
         "Quality": ["Complete", "Same as Standard", "Same as Standard", "Same as Standard"],
-        "Use Case": ["Full analysis", "Production speed", "Maximum confidence (TF-IDF)", "Best semantic (pre-trained)"],
+        "Cloud": ["✅", "✅", "✅", "⚠️ Local only"],
     })
     st.dataframe(comparison_df, width='stretch', hide_index=True)
 
@@ -219,5 +246,5 @@ with st.expander("Comparison: Which method to use?"):
     - **Standard**: Score everyone. Best for understanding full distribution.
     - **RAG**: Fast. One retrieval signal (keywords). Best for production speed.
     - **Hybrid TF-IDF**: Two retrieval signals (concepts + keywords), slower but offline.
-    - **Hybrid Transformers**: Best semantic understanding (pre-trained), fast, requires internet for first run.
+    - **Hybrid Transformers**: Best semantic understanding (pre-trained), requires local install.
     """)
