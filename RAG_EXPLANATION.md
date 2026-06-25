@@ -5,6 +5,7 @@
 **RAG = Retrieval-Augmented Generation** (concept from LLMs adapted here)
 
 ### Original RAG (in Large Language Models)
+
 ```
 User Query
     ↓
@@ -18,11 +19,13 @@ Response
 ```
 
 **Why RAG in LLMs?**
+
 - LLM can't handle all data at once (context window limit)
 - Retrieval pre-filters to only relevant documents
 - Augmenting with context makes LLM outputs factual and grounded
 
 ### Our RAG Ranking (same principle, different domain)
+
 ```
 Job Description (Query)
     ↓
@@ -34,6 +37,7 @@ Job Description (Query)
 ```
 
 **Why RAG in Candidate Ranking?**
+
 - Can't score all 100K efficiently (time + compute)
 - BM25 pre-filters to only JD-relevant candidates
 - Scoring with full rules only on relevant set (faster + better signal)
@@ -62,12 +66,14 @@ Job Description (Query)
 ```
 
 **Characteristics:**
+
 - **Complete:** Every candidate is scored
 - **Time:** ~76 seconds
 - **Approach:** Brute force; evaluate everyone, pick top 100
 - **Use case:** When you have compute budget and want full distribution
 
 **Diagram:**
+
 ```
 All 100K
 ├── Score 1
@@ -105,12 +111,14 @@ All 100K
 ```
 
 **Characteristics:**
+
 - **Focused:** Only scores JD-relevant candidates (5K)
 - **Time:** ~45 seconds (40% faster)
 - **Approach:** Two-stage: retrieve relevant → detailed rank
 - **Use case:** Production; when you need speed + same quality
 
 **Diagram:**
+
 ```
 All 100K
 │
@@ -131,6 +139,7 @@ All 100K
 **Key insight:** BM25 is a strong pre-filter.
 
 A candidate with:
+
 - BM25 = 0.05 (bottom 5%, low JD match)
 - Maximum possible quality blend = 1.0
 - Maximum possible engagement = 1.0
@@ -138,6 +147,7 @@ A candidate with:
 - **Max score = 0.05 × 1.0 × 1.0 = 0.05**
 
 Compared to:
+
 - BM25 = 0.70 (retrieved in top 5K, high JD match)
 - Minimum quality blend = 0.3
 - Minimum engagement = 0.5
@@ -167,7 +177,7 @@ for candidate in all_100k:                # Loop: 100,000 iterations
         quality = compute_quality_blend(candidate)  # 7 components
         engagement = compute_engagement(candidate)
         score = title_gate * quality * engagement
-    
+  
     ranked.append((candidate_id, score))
 
 ranked.sort_by_score()
@@ -175,6 +185,7 @@ return ranked[:100]
 ```
 
 **Time breakdown (76s total):**
+
 - BM25 computation: ~60s
 - Scoring loop: 100K × O(1) = ~14s
 - Sorting + output: ~2s
@@ -198,7 +209,7 @@ for candidate in top_5k:                      # Loop: 5,000 iterations (vs 100,0
         quality = compute_quality_blend(candidate)  # 7 components
         engagement = compute_engagement(candidate)
         score = title_gate * quality * engagement
-    
+  
     ranked.append((candidate_id, score))
 
 ranked.sort_by_score()
@@ -206,6 +217,7 @@ return ranked[:100]
 ```
 
 **Time breakdown (45s total):**
+
 - BM25 computation: ~60s
 - **But we only score 5K, not 100K!**
 - Scoring loop: 5K × O(1) = ~2s (vs 14s for 100K)
@@ -213,6 +225,7 @@ return ranked[:100]
 - **Net: 60 + 2 + 0.5 = 62s? No — BM25 happens in parallel, so...**
 
 Actually, the honest breakdown is:
+
 - BM25 dominates (60s) for both approaches
 - The scoring loop is the difference:
   - Standard: 100K loop = 14s
@@ -243,12 +256,14 @@ diff standard_output.csv rag_output.csv
 ```
 
 **They are byte-for-byte identical:**
+
 - Rank 1: CAND_0011687 (0.8883) — both
 - Rank 2: CAND_0018499 (0.8685) — both
 - ...
 - Rank 100: same candidate, same score
 
 This proves:
+
 1. RAG doesn't lose quality
 2. The 5K retrieved set contains all top-100 candidates
 3. BM25 filtering is safe for this task
@@ -285,15 +300,18 @@ Where:
 ### What This Does
 
 **IDF (Inverse Document Frequency):**
+
 - Terms that appear in all documents (common words) → low IDF
 - Terms that appear in few documents (rare, specific) → high IDF
 - Rare terms are more informative about relevance
 
 **TF (Term Frequency):**
+
 - `tf(term, d)` = how many times term appears in candidate document
 - Higher count = more relevant
 
 **Length Normalization** (the magic):
+
 - Without normalization: longer documents (more words) score higher
 - With normalization (the `|d|/avgdl` part):
   - A document with 100 terms gets less credit per term than a doc with 10 terms
@@ -303,11 +321,13 @@ Where:
 ### Example: Keyword Stuffer Detection
 
 **Candidate A (Real ML Engineer):**
+
 - Profile: ~200 words about ML work
 - Skills listed: pytorch, python, transformers, faiss (4 terms)
 - BM25 score: 0.65 (relevant; core terms, normal document length)
 
 **Candidate B (HR Manager stuffing keywords):**
+
 - Profile: ~200 words about HR work
 - Skills listed: python, pytorch, transformers, faiss, embeddings, langchain, rag, llms, vector search, semantic search, fine-tuning, inference, recommendation systems (13 terms = stuffed!)
 - BM25 score: 0.50 (LOWER despite more terms! length normalization penalizes it)
@@ -323,6 +343,7 @@ Let's trace one candidate through both modes:
 ### CAND_0042857 (hypothetical)
 
 **Profile:**
+
 - Title: Machine Learning Engineer
 - YoE: 6 years
 - Skills: pytorch (36 mo), faiss (24 mo), langchain (18 mo), python (48 mo)
@@ -389,25 +410,25 @@ Let's trace one candidate through both modes:
 
 ## When to Use Which Mode
 
-| Scenario | Use Standard | Use RAG |
-|---|---|---|
-| **Batch job, 76s acceptable** | ✅ | — |
-| **Need to rank 100K+ candidates** | — | ✅ |
-| **Production system, strict latency** | — | ✅ |
-| **Want full score distribution** | ✅ | — |
-| **Need complete audit trail** | ✅ | ✅ |
-| **Millions of candidates** | — | ✅ |
-| **Real-time API (< 2s target)** | — | ✅ (with larger K or approximations) |
+| Scenario                                    | Use Standard | Use RAG                              |
+| ------------------------------------------- | ------------ | ------------------------------------ |
+| **Batch job, 76s acceptable**         | ✅           | —                                   |
+| **Need to rank 100K+ candidates**     | —           | ✅                                   |
+| **Production system, strict latency** | —           | ✅                                   |
+| **Want full score distribution**      | ✅           | —                                   |
+| **Need complete audit trail**         | ✅           | ✅                                   |
+| **Millions of candidates**            | —           | ✅                                   |
+| **Real-time API (< 2s target)**       | —           | ✅ (with larger K or approximations) |
 
 ---
 
 ## Code Files
 
-| File | What it does |
-|---|---|
-| `rank_standard.py` | Standard mode: score all 100K |
-| `rank_rag.py` | RAG mode: retrieve 5K, score 5K |
-| `rank.py` | Unified interface (both modes via CLI flag) |
+| File                 | What it does                                |
+| -------------------- | ------------------------------------------- |
+| `rank_standard.py` | Standard mode: score all 100K               |
+| `rank_rag.py`      | RAG mode: retrieve 5K, score 5K             |
+| `rank.py`          | Unified interface (both modes via CLI flag) |
 
 **Usage:**
 
@@ -428,6 +449,7 @@ python rank.py --candidates candidates.jsonl --out submission.csv --rag  # RAG
 ## Summary
 
 **RAG in candidate ranking:**
+
 - Uses BM25 as a **retrieval gate** (filter to relevant candidates)
 - Only applies expensive **full scoring to relevant subset**
 - Same results, **40% faster** (45s vs 76s)
@@ -436,6 +458,7 @@ python rank.py --candidates candidates.jsonl --out submission.csv --rag  # RAG
 **No LLM involved** — pure logic and algebra, fully offline, CPU-only.
 
 **Why this matters for your hackathon submission:**
+
 - You have both approaches available
 - Standard mode: conservative, guaranteed complete
 - RAG mode: efficient, production-grade, same quality
