@@ -67,7 +67,7 @@ with st.sidebar:
             else:
                 size_mb = os.path.getsize(path) / 1e6
                 st.info(f"`{path}` is {size_mb:.0f} MB")
-                if st.button("Load from disk", use_container_width=True):
+                if st.button("Load from disk", width='stretch'):
                     with st.spinner(f"Loading {path} ({size_mb:.0f} MB)..."):
                         candidates = rank_standard.load_candidates(path)
                         source_label = path
@@ -99,11 +99,18 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "🧠 Hybrid (Sentence Transformers)"
 ])
 
+# Helper function to detect keyword stuffer (from app.py)
+def is_stuffer(c):
+    """Tier-0 title that has stuffed 4+ JD skills."""
+    title = (c.get("profile", {}) or {}).get("current_title", "").lower().strip()
+    names = {(s.get("name") or "").lower() for s in (c.get("skills", []) or [])}
+    return title in rank_standard.TIER0 and len(names & rank_standard.ALL_JD) >= 4
+
 # Helper function
 def display_results(ranked, method_name, timing_info):
     """Display ranking results in consistent format."""
     n_honeypot = sum(1 for c in candidates if rank_standard.is_honeypot(c))
-    n_stuffer = sum(1 for c in candidates if rank_rag.is_stuffer(c))
+    n_stuffer = sum(1 for c in candidates if is_stuffer(c))
 
     by_id = {c.get("candidate_id"): c for c in candidates}
     hp_in_top = sum(1 for r in ranked if rank_standard.is_honeypot(by_id.get(r["candidate_id"], {})))
@@ -136,7 +143,7 @@ def display_results(ranked, method_name, timing_info):
         })
 
     disp_df = pd.DataFrame(disp)
-    st.dataframe(disp_df, use_container_width=True, hide_index=True,
+    st.dataframe(disp_df, width='stretch', hide_index=True,
                 column_config={"Score": st.column_config.NumberColumn(format="%.4f")})
 
     # Download button
@@ -153,12 +160,12 @@ def display_results(ranked, method_name, timing_info):
         data=buf.getvalue(),
         file_name=f"submission_{method_name.lower().replace(' ', '_')}.csv",
         mime="text/csv",
-        use_container_width=True
+        width='stretch'
     )
 
 # ── TAB 1: Standard Mode ───────────────────────────────────────────────────────
 with tab1:
-    if st.button("🚀 Run Standard Mode", use_container_width=True, key="btn_standard"):
+    if st.button("🚀 Run Standard Mode", width='stretch', key="btn_standard"):
         start = datetime.now()
         with st.spinner(f"Scoring all {len(candidates):,} candidates..."):
             ranked = rank_standard.rank_candidates(candidates, top_n=int(top_n))
@@ -167,7 +174,7 @@ with tab1:
 
 # ── TAB 2: RAG Mode ────────────────────────────────────────────────────────────
 with tab2:
-    if st.button("⚡ Run RAG Mode (BM25)", use_container_width=True, key="btn_rag"):
+    if st.button("⚡ Run RAG Mode (BM25)", width='stretch', key="btn_rag"):
         start = datetime.now()
         with st.spinner(f"Retrieving top {retrieval_k:,} by BM25..."):
             ranked = rank_rag.rank_candidates_rag(candidates, retrieval_top_k=int(retrieval_k), top_n=int(top_n))
@@ -176,7 +183,7 @@ with tab2:
 
 # ── TAB 3: Hybrid RAG TF-IDF ───────────────────────────────────────────────────
 with tab3:
-    if st.button("🔀 Run Hybrid RAG (TF-IDF)", use_container_width=True, key="btn_hybrid_tfidf"):
+    if st.button("🔀 Run Hybrid RAG (TF-IDF)", width='stretch', key="btn_hybrid_tfidf"):
         start = datetime.now()
         with st.spinner(f"Hybrid: Semantic (TF-IDF) + Lexical (BM25)..."):
             ranked = rank_hybrid_rag.rank_candidates_hybrid_rag(candidates, retrieval_top_k=int(retrieval_k), top_n=int(top_n))
@@ -186,7 +193,7 @@ with tab3:
 # ── TAB 4: Hybrid RAG Sentence Transformers ────────────────────────────────────
 with tab4:
     st.info("Using pre-trained Sentence Transformers (all-MiniLM-L6-v2) for best semantic matching. First run will download model (~22MB).")
-    if st.button("🧠 Run Hybrid RAG (Sentence Transformers)", use_container_width=True, key="btn_hybrid_st"):
+    if st.button("🧠 Run Hybrid RAG (Sentence Transformers)", width='stretch', key="btn_hybrid_st"):
         start = datetime.now()
         with st.spinner(f"Hybrid: Semantic (Transformers) + Lexical (BM25)..."):
             ranked = rank_sentence_transformers_rag.rank_candidates_sentence_transformers_rag(
@@ -206,7 +213,7 @@ with st.expander("Comparison: Which method to use?"):
         "Quality": ["Complete", "Same as Standard", "Same as Standard", "Same as Standard"],
         "Use Case": ["Full analysis", "Production speed", "Maximum confidence (TF-IDF)", "Best semantic (pre-trained)"],
     })
-    st.dataframe(comparison_df, use_container_width=True, hide_index=True)
+    st.dataframe(comparison_df, width='stretch', hide_index=True)
 
     st.markdown("""
     - **Standard**: Score everyone. Best for understanding full distribution.
