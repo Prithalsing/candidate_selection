@@ -86,7 +86,7 @@ with st.sidebar:
 > view the **pre-computed top-100 below** 👇
 """)
 
-    show_precomputed = st.button("View Full 100K Results (Top 100)", use_container_width=True)
+    show_precomputed = st.button("View Full 100K Results (Top 100)", width='stretch')
 
     # ── Local path (for local use) ─────────────────────────────────────────────
     st.divider()
@@ -104,7 +104,7 @@ with st.sidebar:
             else:
                 size_mb = os.path.getsize(path) / 1e6
                 st.info(f"Found ({size_mb:.1f} MB)")
-                if st.button("Load from disk", use_container_width=True):
+                if st.button("Load from disk", width='stretch'):
                     with st.spinner(f"Loading {size_mb:.1f} MB..."):
                         candidates = rank_standard.load_candidates(path)
                         source_label = path
@@ -152,7 +152,7 @@ if show_precomputed:
 
         st.dataframe(
             df_results,
-            use_container_width=True,
+            width='stretch',
             hide_index=True,
             column_config={
                 "score": st.column_config.NumberColumn("Score", format="%.4f"),
@@ -172,7 +172,7 @@ if show_precomputed:
                 data=buf.getvalue(),
                 file_name="TEAMP2R.csv",
                 mime="text/csv",
-                use_container_width=True
+                width='stretch'
             )
         with col_dl2:
             buf_xlsx = io.BytesIO()
@@ -183,7 +183,7 @@ if show_precomputed:
                 data=buf_xlsx.getvalue(),
                 file_name="TEAMP2R.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
+                width='stretch'
             )
 
     except FileNotFoundError:
@@ -245,7 +245,7 @@ def display_results(ranked, method_name, timing_info):
 
     st.dataframe(
         pd.DataFrame(disp),
-        use_container_width=True,
+        width='stretch',
         hide_index=True,
         column_config={"Score": st.column_config.NumberColumn(format="%.4f")}
     )
@@ -266,7 +266,7 @@ def display_results(ranked, method_name, timing_info):
             data=buf.getvalue(),
             file_name=f"{method_name.lower().replace(' ', '_')}.csv",
             mime="text/csv",
-            use_container_width=True
+            width='stretch'
         )
     with col_dl2:
         buf_xlsx = io.BytesIO()
@@ -277,7 +277,7 @@ def display_results(ranked, method_name, timing_info):
             data=buf_xlsx.getvalue(),
             file_name=f"{method_name.lower().replace(' ', '_')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
+            width='stretch'
         )
 
 # ── Tabs ───────────────────────────────────────────────────────────────────────
@@ -291,7 +291,7 @@ tab1, tab2, tab3, tab4 = st.tabs(tab_list)
 
 with tab1:
     st.write("Score **all** candidates with full 7-component pipeline.")
-    if st.button("Run Standard", use_container_width=True, key="btn_standard"):
+    if st.button("Run Standard", width='stretch', key="btn_standard"):
         start = datetime.now()
         with st.spinner(f"Scoring all {len(candidates):,} candidates..."):
             ranked = rank_standard.rank_candidates(candidates, top_n=int(top_n))
@@ -300,7 +300,7 @@ with tab1:
 
 with tab2:
     st.write("Retrieve top candidates by **BM25**, then score (fastest).")
-    if st.button("Run RAG (BM25)", use_container_width=True, key="btn_rag"):
+    if st.button("Run RAG (BM25)", width='stretch', key="btn_rag"):
         start = datetime.now()
         with st.spinner(f"Retrieving top {retrieval_k:,} by BM25..."):
             ranked = rank_rag.rank_candidates_rag(candidates, retrieval_top_k=int(retrieval_k), top_n=int(top_n))
@@ -309,7 +309,7 @@ with tab2:
 
 with tab3:
     st.write("**Dual retrieval** (TF-IDF semantic + BM25 lexical), then score.")
-    if st.button("Run Hybrid TF-IDF", use_container_width=True, key="btn_hybrid"):
+    if st.button("Run Hybrid TF-IDF", width='stretch', key="btn_hybrid"):
         start = datetime.now()
         with st.spinner("Running dual retrieval (semantic + lexical)..."):
             ranked = rank_hybrid_rag.rank_candidates_hybrid_rag(candidates, retrieval_top_k=int(retrieval_k), top_n=int(top_n))
@@ -319,7 +319,7 @@ with tab3:
 with tab4:
     if HAS_SENTENCE_TRANSFORMERS:
         st.write("**Pre-trained embeddings** (all-MiniLM-L6-v2) + BM25 (best semantic quality).")
-        if st.button("Run Hybrid Transformers", use_container_width=True, key="btn_st"):
+        if st.button("Run Hybrid Transformers", width='stretch', key="btn_st"):
             start = datetime.now()
             with st.spinner("Running Sentence Transformers + BM25..."):
                 ranked = rank_sentence_transformers_rag.rank_candidates_sentence_transformers_rag(
@@ -349,4 +349,4 @@ with st.expander("Method Comparison"):
         "Retrieval": ["All 100K", "Lexical 3K",  "Semantic+Lex 3K","Pre-trained+Lex 3K"],
         "Best For":  ["Full audit","Speed",       "Max confidence", "Best semantic"],
         "Cloud":     ["Yes",      "Yes",          "Yes",            "Local only"],
-    }), use_container_width=True, hide_index=True)
+    }), width='stretch', hide_index=True)
