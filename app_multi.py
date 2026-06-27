@@ -49,12 +49,11 @@ with st.sidebar:
 
     # ── Upload section ─────────────────────────────────────────────────────────
     st.write("**Upload a candidate file**")
-    st.caption("Supports .json (array) or .jsonl (line-delimited) up to 50 MB")
 
     uploaded = st.file_uploader(
         "Choose file",
-        type=["json", "jsonl"],
         label_visibility="collapsed",
+        accept_multiple_files=False,
     )
 
     candidates = []
