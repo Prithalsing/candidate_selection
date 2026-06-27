@@ -1,8 +1,7 @@
 # Redrob Hackathon — Submission Metadata
-# Fields should match what is submitted via the portal at upload time.
 
 # ============================================================================
-# Team identity
+# Team Identity
 # ============================================================================
 team_name: "TEAMP2R"
 
@@ -14,67 +13,110 @@ primary_contact:
 team_members:
   - name: "Prithalsing Vilas More"
     email: "prithalsingmega@gmail.com"
-    role: "ML / ranking, code, full pipeline development"
+    role: "ML Engineering — full pipeline design, implementation, and validation"
 
 # ============================================================================
-# Code and reproducibility
+# Submission Assets
 # ============================================================================
 github_repo: "https://github.com/Prithalsing/candidate_selection"
 
-sandbox_link: "https://candidateselection-apt69vvwqg5vda5vbxez4b.streamlit.app/"
+sandbox_link: "https://candidateselection-v4gr9ito7xyms9faoq6gxq.streamlit.app/"
+
+submission_file: "TEAMP2R.csv"
+# Format: 4 columns — candidate_id, rank, score, reasoning
+# Rows: 100 (top 100 ranked candidates)
+# Validated: passes validate_submission.py
 
 reproduce_command: "python rank.py --candidates ./candidates.jsonl --out ./submission.csv"
-# Single command, end-to-end, CPU only, no network. Measured runtime: ~88 seconds
-# for the full 100,000-candidate pool (well within the 5-minute limit).
-# Accepts either a JSON array (.json) or JSON-lines (.jsonl) input file.
+# Single command, end-to-end, CPU only, no network required.
+# Runtime: ~88 seconds for 100,000 candidates.
+# Input: JSON array (.json) or JSON-lines (.jsonl) — auto-detected.
 
 # ============================================================================
-# Compute environment
+# Compute Environment
 # ============================================================================
 compute:
   platform: "Local Windows PC (AMD64)"
   cpu_cores: 12
   ram_gb: 8
   python_version: "3.12.10"
-  os: "Windows 11 (10.0.26200)"
-  uses_gpu_for_inference: false
-  has_network_during_ranking: false
+  os: "Windows 11"
+  uses_gpu: false
+  requires_network_during_ranking: false
   pre_computation_required: false
-  pre_computation_time_minutes: 0
+  runtime_seconds_for_100k: 88
 
 # ============================================================================
-# AI tools declaration
+# Solution Overview
+# ============================================================================
+problem_statement: "Candidate Ranking for Senior AI Engineer Role"
+
+solution_name: "Hybrid RAG: Gate-Then-Score Pipeline"
+
+methodology_summary: |
+  A Gate-Then-Score hybrid pipeline combining structural rules, dual retrieval
+  (BM25 + TF-IDF), and behavioral signals.
+
+  Stage 0 — HONEYPOT DETECTION (Hard Exclusion):
+    4-check validation system identifies 53 impossible profiles:
+    (1) Date logic violations (career_start > today, end < start)
+    (2) YoE duration mismatch (sum of job durations != declared YoE)
+    (3) Skill duration anomaly (4+ Expert skills with 0 months duration)
+    (4) Assessment impossibility (Expert skill with assessment score < 40)
+    Action: score = 0, excluded before ranking.
+
+  Stage 1 — DUAL RETRIEVAL (BM25 + TF-IDF):
+    BM25 lexical retrieval: top 3,000 by keyword match (length-normalized,
+    stuffer-resistant). TF-IDF semantic retrieval: top 3,000 by concept match.
+    Union: ~3,700 candidates. Hard-filter TIER0 titles (2,653) and remaining
+    honeypots (5). Result: ~1,045 clean candidates for scoring.
+
+  Stage 2 — QUALITY BLEND (7 Components):
+    skill_depth (0.25) + bm25_score (0.20) + career_text_relevance (0.18)
+    + assessment_score (0.17) + career_progression (0.10)
+    + yoe_score (0.06) + location_score (0.04)
+
+  Stage 3 — RANKING GATES (Multiplicative):
+    Title gate: Senior=1.0x, Mid=0.5x, TIER0=0.05x (prevents stuffer gaming).
+    Engagement multiplier: 0.50x–1.00x (notice period, activity, recency).
+
+  Final Score = Title_Gate × Quality_Blend × Engagement
+
+  Result: Top 100 contains 0 honeypots, 0 keyword stuffers, 0 TIER0 titles.
+  All 100 scores unique and non-increasing. Runtime ~88s on CPU.
+
+# ============================================================================
+# Results
+# ============================================================================
+results:
+  total_candidates: 100000
+  honeypots_excluded: 53
+  keyword_stuffers_detected: 8101
+  tier0_titles_filtered: 2653
+  candidates_scored: 1045
+  top_n_output: 100
+  top_candidate_id: "CAND_0011687"
+  top_candidate_score: 0.8883
+  honeypots_in_top_100: 0
+  stuffers_in_top_100: 0
+  tier0_in_top_100: 0
+  validation_passed: true
+
+# ============================================================================
+# AI Tools Declaration
 # ============================================================================
 ai_tools_used:
-  - "Claude"        # brainstorming + code writing
-  - "Gemini"        # brainstorming
-  - "Antigravity"   # code writing
+  - name: "Claude (Anthropic)"
+    usage: "Brainstorming, code writing, debugging"
+  - name: "Gemini (Google)"
+    usage: "Brainstorming and ideation"
+  - name: "Antigravity"
+    usage: "Code writing and editing"
 
-ai_usage_summary: |
-  AI tools were used as follows:
-  - Claude (Anthropic): brainstorming the approach and writing code.
-  - Gemini (Google): brainstorming and ideation.
-  - Antigravity: code writing / editing.
-  All scoring logic, weights, and thresholds were reviewed and validated by the
-  team against the data. No candidate data was sent to any external LLM API
-  during ranking — rank.py runs fully offline on CPU.
-
-# ============================================================================
-# Approach summary
-# ============================================================================
-methodology_summary: |
-  Gate-then-score hybrid combining three paradigms: structural rules, lexical
-  retrieval (BM25), and behavioral proof. Pipeline: (0) hard-exclude honeypots —
-  53 verified impossibilities (date/YoE/skill-duration/expert-assessment
-  contradictions); (1) a multiplicative TITLE GATE (1.0..0.05) so keyword-stuffer
-  Tier-0 profiles cannot reach the top 100 regardless of stuffed skills; (2) a
-  QUALITY blend (skill depth 0.25, BM25 lexical 0.20, career-text 0.18,
-  skill-assessment 0.17, career history 0.10, YoE 0.06, location 0.04); (3) an
-  engagement multiplier (0.50..1.00) applied last. skill_assessment_scores
-  separate proven experts from claimed ones and break ties. BM25 (length-
-  normalized, hence stuffer-robust) supplies JD-specific wording our keyword
-  lists miss. Final top 100 contains 0 honeypots, 0 stuffers, 0 Tier-0 titles,
-  with 100 unique, non-increasing scores. Runtime ~88s for 100K candidates on CPU.
+ai_usage_note: |
+  All scoring logic, weights, thresholds, and validation were reviewed and
+  confirmed by the team. No candidate data was sent to any external API during
+  ranking — rank.py runs fully offline on CPU only.
 
 # ============================================================================
 # Declarations
@@ -83,5 +125,6 @@ declarations:
   read_submission_spec: true
   code_is_original_work: true
   no_collusion: true
-  honeypot_check_done: true         # Explicit forensic honeypot verification — see 03_honeypot_forensics.ipynb
-  reproduction_tested: true         # rank.py tested end-to-end; output passes validate_submission.py
+  honeypot_check_done: true
+  reproduction_tested: true
+  output_passes_validator: true
