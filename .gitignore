@@ -9,9 +9,15 @@ candidates_*.xlsx
 # generated submission at repo root (canonical one lives in outputs/)
 submission.csv
 
+# temporary files
 outputs/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
 *.egg-info/
 .env
+~$*.pptx
+~$*.xlsx
+~$*.docx
+.DS_Store
+*.tmp
